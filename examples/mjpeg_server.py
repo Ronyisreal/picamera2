@@ -1,31 +1,30 @@
 #!/usr/bin/python3
 
-# Mostly copied from https://picamera.readthedocs.io/en/release-1.13/recipes2.html
-# Run this script, then point a web browser at http:<this-ip-address>:8000
-# Note: needs simplejpeg to be installed (pip3 install simplejpeg).
+# Modified from https://github.com/raspberrypi/picamera2/blob/main/examples/mjpeg_server.py
+# Run this script, then point a web browser at http://<this-ip-address>:8000
+# Note: Requires simplejpeg to be installed (pip3 install simplejpeg).
 
 import io
 import logging
 import socketserver
 from http import server
 from threading import Condition
-
 from picamera2 import Picamera2
 from picamera2.encoders import JpegEncoder
 from picamera2.outputs import FileOutput
 
-PAGE = """\
+# Modified HTML page to display your name
+PAGE = """
 <html>
 <head>
-<title>picamera2 MJPEG streaming demo</title>
+<title>Rounak Mukherjee - SYSC3010</title>
 </head>
 <body>
-<h1>Picamera2 MJPEG Streaming Demo</h1>
+<h1>Rounak Mukherjee - SYSC3010</h1>
 <img src="stream.mjpg" width="640" height="480" />
 </body>
 </html>
 """
-
 
 class StreamingOutput(io.BufferedIOBase):
     def __init__(self):
@@ -36,7 +35,6 @@ class StreamingOutput(io.BufferedIOBase):
         with self.condition:
             self.frame = buf
             self.condition.notify_all()
-
 
 class StreamingHandler(server.BaseHTTPRequestHandler):
     def do_GET(self):
@@ -70,19 +68,16 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
                     self.wfile.write(frame)
                     self.wfile.write(b'\r\n')
             except Exception as e:
-                logging.warning(
-                    'Removed streaming client %s: %s',
-                    self.client_address, str(e))
+                logging.warning('Removed streaming client %s: %s', self.client_address, str(e))
         else:
             self.send_error(404)
             self.end_headers()
-
 
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 
-
+# Initialize PiCamera2 and configure the stream
 picam2 = Picamera2()
 picam2.configure(picam2.create_video_configuration(main={"size": (640, 480)}))
 output = StreamingOutput()
@@ -91,6 +86,7 @@ picam2.start_recording(JpegEncoder(), FileOutput(output))
 try:
     address = ('', 8000)
     server = StreamingServer(address, StreamingHandler)
+    print("Streaming server started. Visit http://<Raspberry-Pi-IP>:8000")
     server.serve_forever()
 finally:
     picam2.stop_recording()
